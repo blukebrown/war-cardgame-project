@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>War Card Game</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: sans-serif;
+        overflow-y: hidden;
+      }
+
+      h2 {
+        font-size: 20px;
+      }
+
+      .deck {
+        width: 120px;
+        height: 196px;
+        border: 3px solid rgb(58, 65, 69);
+        padding: 20px;
+        margin: 6px;
+        border-radius: 10px;
+        background-color: rgb(200, 200, 200);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+      }
+
+      .card {
+        width: 120px;
+        height: 196px;
+        border: 3px solid rgb(58, 65, 69);
+        padding: 24px;
+        border-radius: 10px;
+        background-color: rgb(255, 255, 255);
+        font-size: 36px;
+
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+
+        position: relative;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+
+        transition: all .3s ease-in;
+      }
+
+      .opponent {
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+
+      .player {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+      }
+
+      #deal-btn {
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+
+        width: 120px;
+
+        padding: 20px;
+        margin: 6px;
+
+        background-color: rgb(200, 200, 200);
+
+        border: 3px solid rgb(58, 65, 69);
+        border-radius: 10px;
+
+        cursor: pointer;
+      }
+
+      #deal-btn:hover {
+        background-color: rgb(220, 220, 220);
+      }
+
+      #opponent-played-cards {
+            position: absolute;
+            top: 0;
+            left: 144px;
+
+            width: calc(100vw - 156px);
+            height: 250px;
+
+            padding: 20px;
+            margin: 6px;
+
+            border: 3px solid rgb(58, 65, 69);
+            border-radius: 10px;
+      }
+
+      #player-played-cards {
+            position: absolute;
+            bottom: 0;
+            left: 144px;
+
+            width: calc(100vw - 156px);
+            height: 250px;
+
+            padding: 20px;
+            margin: 6px;
+
+            border: 3px solid rgb(58, 65, 69);
+            border-radius: 10px;
+      }
+
+      .opponent-collect-cards {
+
+      }
+
+      .player-collect-cards {
+
+      }
+
+    </style>
+  </head>
+  <body>
+    <div class="deck opponent">
+      <h2>Opponent Deck</h2>
+      <p id="opponent-total-cards">
+        26
+      </p>
+    </div>
+    <div class="deck player">
+      <h2>Your Deck</h2>
+      <p id="player-total-cards">
+        26
+      </p>
+    </div>
+
+    <button id="deal-btn" type="button">Play Card</button>
+
+    <div id="opponent-played-cards">
+
+    </div>
+    <div id="player-played-cards">
+
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      window.onload = function() {
+        const socket = io();
+        let playerID = 0;
+        let playerTurn = true;
+
+        socket.on('err', function(err){
+          alert(err.message);
+        });
+
+        socket.on('player-info', function(info) {
+          playerID = parseInt(info.player);
+          playerTurn = info.turn;
+        });
+
+        const dealButton = document.getElementById('deal-btn');
+        dealButton.addEventListener('click', function() {
+          if (playerTurn) {
+            socket.emit('play-card', playerID);
+          } else {
+            playerPlayedCards.style.backgroundColor = "red";
+            alert("It is not your turn.");
+          }
+        }, false);
+
+        const playerPlayedCards = document.getElementById('player-played-cards');
+        const opponentPlayedCards = document.getElementById('opponent-played-cards');
+
+        socket.on('card-info', function(card, pID) {
+          let p_card = makeCardElement(card.Value, card.Suit);
+          if (playerID == pID) {
+            playerPlayedCards.appendChild(p_card);
+          } else {
+            opponentPlayedCards.appendChild(p_card);
+          }
+        });
+
+        socket.on('war-card-info', function(p1_card, p2_card) {
+          let p1 = makeCardElement(p1_card.Value, p1_card.Suit);
+          let p2 = makeCardElement(p2_card.Value, p2_card.Suit);
+          document.getElementById('player-played-cards').innerHTML = "";
+          document.getElementById('opponent-played-cards').innerHTML = "";
+          if (playerID == 1) {
+            playerPlayedCards.appendChild(p1);
+            opponentPlayedCards.appendChild(p2);
+          } else {
+              playerPlayedCards.appendChild(p2);
+              opponentPlayedCards.appendChild(p1);
+          }
+        });
+
+        function makeCardElement(value, suit) {
+          let cardElement = document.createElement("div");
+          cardElement.classList.add('card');
+          let cardValue = document.createTextNode(value);
+          cardElement.appendChild(cardValue);
+          let br = document.createElement("br");
+          cardElement.appendChild(br);
+          switch (suit) {
+            case "spades":
+              cardElement.insertAdjacentHTML('beforeend', "&#x02660;");
+              break;
+            case "diamonds":
+              cardElement.insertAdjacentHTML('beforeend', "&#x02666;");
+              break;
+            case "clubs":
+              cardElement.insertAdjacentHTML('beforeend', "&#x02663;");
+              break;
+            case "hearts":
+              cardElement.insertAdjacentHTML('beforeend', "&#x02665;");
+              break;
+            default:
+              console.log("ERROR on suits");
+          }
+          return cardElement;
+        }
+
+        socket.on('turn-change', function() {
+          playerTurn = !playerTurn;
+          turnIndicator();
+        });
+
+        socket.on('round-ended', function(roundWinnerID, p1NumOfCards, p2NumOfCards) {
+          alert("Player " + roundWinnerID + " won that hand");
+          let windowHeight = window.innerHeight;
+          let opponentCardDistance = windowHeight + 300;
+          if (roundWinnerID === playerID) {
+            playerTurn = true;
+            playerPlayedCards.children[0].style.transform = "translateY(300px)";
+            opponentPlayedCards.children[0].style.transform = "translateY(" + opponentCardDistance + "px)";
+          } else {
+            playerTurn = false;
+            opponentPlayedCards.children[0].style.transform = "translateY(-600px)";
+            playerPlayedCards.children[0].style.transform = "translateY(-" + opponentCardDistance + "px)";
+          }
+
+          turnIndicator();
+
+          setTimeout(function() {
+            document.getElementById('player-played-cards').innerHTML = "";
+            document.getElementById('opponent-played-cards').innerHTML = "";
+          }, 2000);
+
+
+
+          let opponentTotalCards = document.getElementById('opponent-total-cards');
+          let playerTotalCards = document.getElementById('player-total-cards');
+
+          if (playerID == 1) {
+            playerTotalCards.textContent = p1NumOfCards;
+            opponentTotalCards.textContent = p2NumOfCards;
+          } else {
+            playerTotalCards.textContent = p2NumOfCards;
+            opponentTotalCards.textContent = p1NumOfCards;
+          }
+        });
+
+        socket.on('game-ended', function(winnerID) {
+          if (winnerID == playerID) {
+            alert("YOU WON");
+          } else {
+              alert("Player " + winnerID + " won!");
+          }
+        });
+
+        socket.on('game-reset', function() {
+          location.reload(true);
+        });
+
+        function turnIndicator() {
+          playerPlayedCards.style.backgroundColor = "#ffffff";
+          opponentPlayedCards.style.backgroundColor = "#ffffff";
+          if (playerTurn) {
+            playerPlayedCards.style.backgroundColor = "#aaff89";
+            opponentPlayedCards.style.backgroundColor = "#ffffff";
+          } else {
+            playerPlayedCards.style.backgroundColor = "ffffff";
+            opponentPlayedCards.style.backgroundColor = "#aaff89";
+          }
+        }
+
+      }
+    </script>
+  </body>
+</html>
