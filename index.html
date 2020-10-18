@@ -163,6 +163,10 @@
           alert(err.message);
         });
 
+        socket.on('relocate-user', function() {
+          window.location.replace('./disconnected.html');
+        });
+
         socket.on('player-info', function(info) {
           playerID = parseInt(info.player);
           playerTurn = info.turn;

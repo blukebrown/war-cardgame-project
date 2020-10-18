@@ -15,6 +15,7 @@ io.on('connection', (socket) => {
     // Emit message to client that they can't join (prompts in browser window)
     socket.emit('err', { message: 'Application has reached the limit of connections'});
     // Disconnect client
+    socket.emit('relocate-user');
     socket.disconnect();
     console.log('Disconnected...');
     // Break out of code
